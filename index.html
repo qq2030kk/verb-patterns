@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>動詞堆疊：中文可以疊，英文要變形</title>
+<style>
+  :root {
+    --paper: #f4efe6;
+    --ink: #241c14;
+    --muted: #6d5f52;
+    --card: #fffdf8;
+    --line: #e5d9c8;
+    --zh: #c24b2a;
+    --zh-soft: #f8e5dc;
+    --en: #1c5d68;
+    --en-soft: #dcecee;
+    --to: #1a6ea6;
+    --to-soft: #d6ebf8;
+    --ing: #c56a10;
+    --ing-soft: #f8e5c8;
+    --same: #2c7a4b;
+    --same-soft: #dcefe1;
+    --diff: #a83358;
+    --diff-soft: #f7dce5;
+    --ok: #2c7a4b;
+    --bad: #c0392b;
+    --shadow: 0 12px 32px rgba(48, 28, 8, .08);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #fbe7d6 0%, transparent 50%),
+      radial-gradient(900px 400px at 100% 0%, #dcecee 0%, transparent 46%),
+      var(--paper);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+    font-size: clamp(17px, 1.35vw, 21px);
+    line-height: 1.65;
+  }
+  .wrap { width: min(1080px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 80px; }
+  header.hero { text-align: center; padding: 18px 0 8px; }
+  header.hero h1 {
+    margin: 0 0 8px;
+    font-size: clamp(28px, 4vw, 46px);
+    line-height: 1.25;
+    letter-spacing: .02em;
+  }
+  header.hero p.lead {
+    margin: 0 auto;
+    max-width: 34em;
+    color: var(--muted);
+    font-size: 1.02em;
+  }
+  .topbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  button, .chip {
+    font: inherit;
+    cursor: pointer;
+  }
+  .ghost, .nav a, .play, .reset, .opt, .toggle button, .pill, .full {
+    border: 0;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 6px 16px rgba(40,20,0,.06);
+  }
+  .full, .ghost {
+    padding: .4em .9em;
+    font-size: .85em;
+  }
+  nav.jump {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 0 14px;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  nav.jump a {
+    display: inline-block;
+    padding: .38em .9em;
+    text-decoration: none;
+    font-size: .86em;
+    font-weight: 700;
+  }
+  nav.jump a:hover { background: var(--en-soft); }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    padding: clamp(20px, 3vw, 36px);
+    margin: 18px 0;
+  }
+  section h2 {
+    margin: 0 0 6px;
+    font-size: clamp(22px, 2.4vw, 30px);
+  }
+  section .sec-lead { margin: 0 0 22px; color: var(--muted); }
+  .kicker {
+    display: inline-block;
+    margin-bottom: 8px;
+    color: var(--en);
+    font-weight: 800;
+    font-size: .78em;
+    letter-spacing: .12em;
+  }
+  .demo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .col {
+    padding: 18px;
+    border-radius: 18px;
+    background: #faf7f1;
+  }
+  .col.zh { background: var(--zh-soft); }
+  .col.en { background: var(--en-soft); }
+  .col h3 { margin: 0 0 14px; font-size: 1.15em; }
+  .stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 74px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.2em;
+    padding: .4em .8em;
+    border-radius: 14px;
+    color: #fff;
+    font-weight: 800;
+    box-shadow: 0 4px 0 rgba(0,0,0,.14);
+    transition: transform .35s ease, background .35s ease, box-shadow .35s ease;
+  }
+  .tile.zh { background: var(--zh); }
+  .tile.en { background: var(--en); }
+  .tile.to { background: var(--to); }
+  .tile.ing { background: var(--ing); }
+  .plus { font-weight: 800; color: var(--muted); transition: opacity .3s, width .3s; }
+  .plus.hide { opacity: 0; width: 0; overflow: hidden; }
+  .cap { min-height: 3.4em; margin: 14px 0 0; }
+  .ok { color: var(--ok); font-weight: 800; }
+  .bad { color: var(--bad); font-weight: 800; }
+  .shake { animation: shake .45s; }
+  @keyframes shake {
+    25% { transform: translateX(-8px) rotate(-3deg); }
+    50% { transform: translateX(8px) rotate(3deg); }
+    75% { transform: translateX(-5px); }
+  }
+  .actions { display: flex; justify-content: center; gap: 10px; margin-top: 18px; }
+  .play, .reset {
+    padding: .65em 1.3em;
+    font-weight: 800;
+    background: var(--ink);
+    color: #fff;
+  }
+  .reset { background: #fff; color: var(--ink); }
+  .grid-2, .grid-4 { display: grid; gap: 14px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+  @media (min-width: 860px) {
+    .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  }
+  .type-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    padding: 16px;
+    border-radius: 18px;
+    border: 2px solid transparent;
+    min-height: 100%;
+  }
+  .type-card b { display: block; font-size: 1.05em; margin-bottom: 6px; }
+  .type-card span { display: block; color: var(--muted); font-size: .9em; }
+  .type-card .mark {
+    display: inline-block;
+    margin-top: 10px;
+    padding: .1em .55em;
+    border-radius: 999px;
+    background: #fff;
+    font-size: .75em;
+    font-weight: 800;
+  }
+  .t1 { background: var(--to-soft); }
+  .t2 { background: var(--ing-soft); }
+  .t3 { background: var(--same-soft); }
+  .t4 { background: var(--diff-soft); }
+  .badge {
+    display: inline-block;
+    padding: .05em .5em;
+    border-radius: 999px;
+    font-size: .78em;
+    font-weight: 800;
+    vertical-align: middle;
+  }
+  .badge.to { background: var(--to-soft); color: var(--to); }
+  .badge.ing { background: var(--ing-soft); color: var(--ing); }
+  .badge.same { background: var(--same-soft); color: var(--same); }
+  .badge.diff { background: var(--diff-soft); color: var(--diff); }
+  .verb-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; }
+  .pill {
+    padding: .28em .7em;
+    font-weight: 700;
+  }
+  .pill.on { background: var(--ink); color: #fff; }
+  .ex-box {
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #fff;
+    min-height: 4.2em;
+  }
+  .ex-en { font-weight: 800; }
+  .ex-zh { color: var(--muted); }
+  .say {
+    border: 0;
+    background: transparent;
+    font-size: 1em;
+    margin-left: 4px;
+    padding: 0;
+  }
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .pair .ex-box { margin: 0; }
+  .note {
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #f7f1e6;
+    color: var(--muted);
+    font-size: .92em;
+  }
+  .diff-card {
+    padding: 18px;
+    border-radius: 18px;
+    background: #faf7f1;
+    margin: 14px 0;
+  }
+  .diff-card h3 { margin: 0 0 4px; font-size: 1.3em; }
+  .diff-card .sub { margin: 0 0 12px; color: var(--muted); }
+  .toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+  .toggle button {
+    padding: .4em 1em;
+    font-weight: 800;
+  }
+  .toggle button.on.to { background: var(--to); color: #fff; }
+  .toggle button.on.ing { background: var(--ing); color: #fff; }
+  .when {
+    display: inline-block;
+    margin-bottom: 8px;
+    padding: .15em .6em;
+    border-radius: 999px;
+    font-size: .82em;
+    font-weight: 800;
+  }
+  .panel.to .when { background: var(--to-soft); color: var(--to); }
+  .panel.ing .when { background: var(--ing-soft); color: var(--ing); }
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: .92em;
+  }
+  .flow .box {
+    padding: .2em .55em;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink);
+    font-weight: 700;
+  }
+  details.extra {
+    margin-top: 12px;
+    padding: 8px 4px;
+  }
+  details.extra summary { cursor: pointer; font-weight: 800; }
+  .quiz { text-align: left; }
+  .q-en { font-size: 1.2em; font-weight: 800; margin: 8px 0 4px; }
+  .q-zh { color: var(--muted); margin-bottom: 14px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 10px; }
+  .opt {
+    padding: .55em 1em;
+    font-weight: 800;
+    background: #fff;
+  }
+  .opt.good { background: var(--same); color: #fff; }
+  .opt.bad { background: var(--bad); color: #fff; }
+  .feedback { min-height: 3em; margin-top: 14px; font-weight: 700; }
+  .q-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 10px; }
+  .scatter .pill.c-sh   { background:#fbd3e4; color:#8a2350; }
+  .scatter .pill.c-to   { background:#d4f0d9; color:#22663a; }
+  .scatter .pill.c-ing  { background:#e6dcf7; color:#56368f; }
+  .scatter .pill.c-same { background:#cfe2fb; color:#1d4f8f; }
+  .scatter .pill.c-diff { background:#fbefb3; color:#7a5a00; }
+  .scatter .pill.on { background: var(--ink); color:#fff; }
+  .color-key { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 14px; margin:4px 0 6px; font-size:.82em; color:var(--muted); font-weight:700; }
+  .color-key span { display:inline-flex; align-items:center; gap:6px; }
+  .color-key i { width:16px; height:16px; border-radius:50%; display:inline-block; }
+  @media (max-width: 720px) {
+    .demo, .grid-2, .grid-4, .pair { grid-template-columns: 1fr; }
+    nav.jump { position: static; }
+  }
+  @media print {
+    nav.jump, .topbar, .actions, .toggle, .opts, .q-nav, .say { display: none !important; }
+    section { break-inside: avoid; box-shadow: none; }
+    .panel { display: block !important; }
+    body { background: #fff; }
+  }
+
+  .subhead {
+    margin: 28px 0 8px;
+    font-size: 1.1em;
+  }
+  .bi-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 8px 18px;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: #fff;
+    margin: 8px 0;
+  }
+  .bi-zh { font-weight: 700; }
+  .bi-en { font-weight: 800; }
+  .idea {
+    text-align: center;
+    font-weight: 800;
+    margin: 0 0 4px;
+    font-size: 1.15em;
+  }
+  .idea small {
+    display: block;
+    margin-top: 6px;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: .88em;
+    line-height: 1.45;
+  }
+  .formula {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 12px 0 16px;
+    flex-wrap: wrap;
+  }
+  .scatter {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 14px 16px;
+    min-height: 170px;
+    padding: 22px 14px;
+    margin: 8px 0 16px;
+    background: #faf7f1;
+    border-radius: 18px;
+  }
+  .scatter .pill { transform: rotate(var(--r, 0deg)); }
+  .ex-gap { height: 12px; }
+  .stage.pair-stack {
+    flex-direction: column;
+    min-height: 108px;
+    gap: 8px;
+  }
+  .stage-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .demo-pos {
+    text-align: center;
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-weight: 700;
+    font-size: .9em;
+  }
+  .sort-pop {
+    position: fixed;
+    z-index: 40;
+    width: min(420px, calc(100vw - 24px));
+    margin: 0;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+  .sort-pop-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .sort-pop-head .ex-en { margin: 0; }
+  .badge.sh { background: #f7f1e6; color: var(--muted); }
+  .demo + .demo { margin-top: 14px; }
+  .demo + .subhead { margin-top: 28px; }
+  #contrast .col .ok { text-align: center; margin: 12px 0 0; }
+  .pill.jh {
+    background: var(--en-soft);
+    color: var(--en);
+  }
+  .pill.jh.on {
+    background: var(--ink);
+    color: #fff;
+  }
+  @media (max-width: 720px) {
+    .bi-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <button class="full" type="button" onclick="toggleFull()">全螢幕</button>
+  </div>
+
+  <section id="contrast">
+    <div class="kicker">STEP 1</div>
+    <h2>中文可以疊，英文要變形</h2>
+    <div class="demo">
+      <div class="col zh">
+        <h3>中文：可以直接疊</h3>
+        <div class="stage">
+          <span class="tile zh">想</span>
+          <span class="plus">+</span>
+          <span class="tile zh">吃</span>
+        </div>
+        <p class="ok">我想吃。</p>
+      </div>
+      <div class="col en">
+        <h3>英文：第二個要變形</h3>
+        <div class="stage">
+          <span class="tile en">want</span>
+          <span class="plus">+</span>
+          <span class="tile to">to eat</span>
+        </div>
+        <p class="ok">I want to eat.</p>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="col zh">
+        <div class="stage">
+          <span class="tile zh">計畫</span>
+          <span class="plus">+</span>
+          <span class="tile zh">離開</span>
+        </div>
+        <p class="ok">我計畫離開。</p>
+      </div>
+      <div class="col en">
+        <div class="stage">
+          <span class="tile en">plan</span>
+          <span class="plus">+</span>
+          <span class="tile to">to leave</span>
+        </div>
+        <p class="ok">I plan to leave.</p>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="col zh">
+        <div class="stage">
+          <span class="tile zh">享受</span>
+          <span class="plus">+</span>
+          <span class="tile zh">唱歌</span>
+        </div>
+        <p class="ok">我享受唱歌。</p>
+      </div>
+      <div class="col en">
+        <div class="stage">
+          <span class="tile en">enjoy</span>
+          <span class="plus">+</span>
+          <span class="tile ing">singing</span>
+        </div>
+        <p class="ok">I enjoy singing.</p>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="col zh">
+        <div class="stage">
+          <span class="tile zh">喜歡</span>
+          <span class="plus">+</span>
+          <span class="tile zh">擁抱</span>
+        </div>
+        <p class="ok">我喜歡擁抱他。</p>
+      </div>
+      <div class="col en">
+        <div class="stage">
+          <span class="tile en">like</span>
+          <span class="plus">+</span>
+          <span class="tile to">to hug</span>
+        </div>
+        <p class="ok">I like to hug him.</p>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="col zh">
+        <div class="stage">
+          <span class="tile zh">記得</span>
+          <span class="plus">+</span>
+          <span class="tile zh">擁抱</span>
+        </div>
+        <p class="ok">我記得要去擁抱他。</p>
+      </div>
+      <div class="col en">
+        <div class="stage">
+          <span class="tile en">remembered</span>
+          <span class="plus">+</span>
+          <span class="tile to">to hug</span>
+        </div>
+        <p class="ok">I remembered to hug him.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="forms">
+    <div class="kicker">STEP 2</div>
+    <h2>V + to V　／　V + V-ing</h2>
+    <div class="grid-2">
+      <div class="col" style="background:var(--to-soft)">
+        <h3>V + to V</h3>
+        <p class="idea">兩段式<small>意念 → 還沒做的行動</small></p>
+        <div class="formula">
+          <span class="tile en">want</span>
+          <span class="plus">+</span>
+          <span class="tile to">to eat</span>
+        </div>
+        <div class="verb-row" id="toPills"></div>
+        <div class="ex-box" id="toEx"></div>
+      </div>
+      <div class="col" style="background:var(--ing-soft)">
+        <h3>V + V-ing</h3>
+        <p class="idea">同時發生<small>V-ing 是這個動作的內容</small></p>
+        <div class="formula">
+          <span class="tile en">enjoy</span>
+          <span class="plus">+</span>
+          <span class="tile ing">singing</span>
+        </div>
+        <div class="verb-row" id="ingPills"></div>
+        <div class="ex-box" id="ingEx"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sort">
+    <div class="kicker">STEP 3</div>
+    <h2>點單字看接法</h2>
+    <div class="color-key"><span><i style="background:#d4f0d9"></i>加 to V</span><span><i style="background:#e6dcf7"></i>加 V-ing</span><span><i style="background:#cfe2fb"></i>兩者都可</span><span><i style="background:#fbefb3"></i>意思不一樣</span><span><i style="background:#fbd3e4"></i>高中單字</span></div>
+    <div class="scatter" id="scatter"></div>
+    <div class="ex-box sort-pop" id="sortEx" hidden></div>
+  </section>
+</div>
+
+<script>
+function speak(text) {
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    u.rate = 0.9;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function renderPills(list, pillBox, exBox, kind) {
+  list.forEach((item, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pill" + (i === 0 ? " on" : "");
+    b.textContent = item.v;
+    b.onclick = () => {
+      pillBox.querySelectorAll(".pill").forEach(p => p.classList.remove("on"));
+      b.classList.add("on");
+      showEx(exBox, item, kind);
+    };
+    pillBox.appendChild(b);
+  });
+  showEx(exBox, list[0], kind);
+}
+function showEx(box, item, kind) {
+  const badge = kind === "to" ? '<span class="badge to">to V</span>' : '<span class="badge ing">V-ing</span>';
+  box.innerHTML = '<div class="ex-en">' + item.ex + ' <button class="say" type="button">🔊</button></div><div class="ex-zh">' + item.zh + "　" + badge + "</div>";
+  box.querySelector(".say").onclick = () => speak(item.ex);
+}
+renderPills(
+  [
+    { v: "want", ex: "I want to eat.", zh: "我想要吃。" },
+    { v: "need", ex: "I need to rest.", zh: "我需要休息。" },
+    { v: "plan", ex: "I plan to leave at six.", zh: "我計畫六點離開。" }
+  ],
+  document.getElementById("toPills"),
+  document.getElementById("toEx"),
+  "to"
+);
+renderPills(
+  [
+    { v: "enjoy", ex: "I enjoy singing.", zh: "我享受唱歌。" },
+    { v: "practice", ex: "I practice playing the piano.", zh: "我練習彈鋼琴。" }
+  ],
+  document.getElementById("ingPills"),
+  document.getElementById("ingEx"),
+  "ing"
+);
+
+const P = "後面是「人 + to V」";
+function T(v, sh, en, zh, note) { return { v, cat:"to", sh, ex:[{en, zh}], note }; }
+function G(v, sh, en, zh, note) { return { v, cat:"ing", sh, ex:[{en, zh}], note }; }
+function S(v, sh, en1, en2, zh, note) { return { v, cat:"same", sh, ex:[{en:en1, zh},{en:en2, zh}], note: note || "意思差不多。" }; }
+function D(v, en1, zh1, n1, en2, zh2, n2) { return { v, cat:"diff", sh:false, ex:[{en:en1, zh:zh1, note:n1},{en:en2, zh:zh2, note:n2}] }; }
+const WORDS = [
+  // to — screenshot
+  T("ask",false,"I asked her to hug him.","我請她擁抱他。",P),
+  T("learn",false,"I learned to hug him.","我學會擁抱他。"),
+  T("need",false,"I need to hug him.","我需要擁抱他。","高中補充：need + V-ing ≈ need to be Ved，例：The car needs washing.（車子需要被洗）"),
+  T("plan",false,"I plan to hug him.","我計畫擁抱他。"),
+  T("want",false,"I want to hug him.","我想要擁抱他。"),
+  T("teach",false,"I taught her to hug him.","我教她擁抱他。",P),
+  T("tell",false,"I told her to hug him.","我叫她擁抱他。",P),
+  T("decide",false,"I decided to hug him.","我決定擁抱他。"),
+  T("fail",false,"I failed to hug him.","我沒能擁抱到他。"),
+  T("hope",false,"I hope to hug him.","我希望擁抱他。"),
+  T("wish",false,"I wish to hug him.","我希望能擁抱他。"),
+  T("invite",false,"I invited her to hug him.","我邀請她擁抱他。",P),
+  T("agree",false,"I agreed to hug him.","我同意擁抱他。"),
+  T("make up one's mind",false,"I made up my mind to hug him.","我下定決心擁抱他。"),
+  T("would like",false,"I would like to hug him.","我想要擁抱他。"),
+  T("help",false,"I helped (to) hug him.","我幫忙擁抱他。","help (to) V，to 可省略；也可 help + 人 + (to) V：I helped her (to) hug him."),
+  // to — JH
+  T("expect",false,"I expected to hug him.","我預期會擁抱他。"),
+  T("prepare",false,"I prepared to hug him.","我準備好要擁抱他。"),
+  T("choose",false,"I chose to hug him.","我選擇擁抱他。"),
+  T("refuse",false,"I refused to hug him.","我拒絕擁抱他。"),
+  T("promise",false,"I promised to hug him.","我答應要擁抱他。"),
+  T("offer",false,"I offered to hug him.","我主動提議擁抱他。"),
+  T("wait",false,"I waited to hug him.","我等著擁抱他。"),
+  T("seem",false,"He seems to be happy.","他似乎很開心。","主詞常是被描述的人事物，後面多接 to be。"),
+  T("appear",false,"He appeared to be tired.","他看起來很累。","appear to V = 看起來、似乎，多接 to be。"),
+  T("arrange",false,"I arranged to meet him.","我安排和他見面。","arrange 多用於安排行程，用 meet 較自然。"),
+  T("desire",false,"I desire to hug him.","我渴望擁抱他。","語氣較正式。"),
+  T("seek",false,"I sought to help him.","我設法幫助他。","seek to V = 設法、企圖，語氣正式；過去式 sought。"),
+  T("aim",false,"I aim to win the game.","我的目標是贏得比賽。","aim to V = 目標是…，用於目標較自然。"),
+  T("happen",false,"I happened to hug him.","我剛好擁抱了他。","happen to V = 碰巧。"),
+  T("cause",false,"The noise caused her to hug him.","那聲音使她擁抱他。",P+"；主詞常是事情。"),
+  T("command",false,"I commanded her to hug him.","我命令她擁抱他。",P),
+  T("allow",false,"I allowed her to hug him.","我允許她擁抱他。",P),
+  T("advise",false,"I advised her to hug him.","我建議她擁抱他。",P),
+  T("remind",false,"I reminded her to hug him.","我提醒她擁抱他。",P),
+  T("hire",false,"I hired her to teach him.","我雇用她來教他。",P+"；雇人做工作，用 teach 較自然。"),
+  T("train",false,"I trained her to hug him.","我訓練她擁抱他。",P),
+  T("get",false,"I got her to hug him.","我讓她擁抱了他。",P+"；get 人 to V = 說服／設法讓人去做。"),
+  T("order",false,"I ordered her to hug him.","我命令她擁抱他。",P),
+  // to — SH
+  T("afford",true,"I can't afford to buy a car.","我買不起車。","afford 多和 can't 及花錢的事連用。"),
+  T("attempt",true,"I attempted to hug him.","我試圖擁抱他。"),
+  T("manage",true,"I managed to hug him.","我設法擁抱到他了。","manage to V = 成功做到（克服困難）。"),
+  T("pretend",true,"I pretended to hug him.","我假裝擁抱他。"),
+  T("deserve",true,"He deserves to win.","他值得獲勝。","deserve 多接好壞結果，用 win 較自然。"),
+  T("hesitate",true,"I hesitated to hug him.","我猶豫要不要擁抱他。"),
+  T("tend",true,"I tend to hug him.","我往往會擁抱他。","tend to V = 傾向、往往。"),
+  T("threaten",true,"He threatened to leave.","他威脅要離開。","threaten 多接負面行動，用 leave 較自然。"),
+  T("claim",true,"He claimed to know her.","他聲稱認識她。","claim 多接說法、狀態。"),
+  T("demand",true,"I demanded to see him.","我要求見他。","demand to V 多接 see / know。"),
+  T("determine",true,"I determined to hug him.","我決心擁抱他。","也常用 be determined to V。"),
+  T("swear",true,"I swore to hug him.","我發誓要擁抱他。","過去式 swore。"),
+  T("volunteer",true,"I volunteered to help him.","我自願幫助他。","用 help 較自然。"),
+  T("struggle",true,"I struggled to hug him.","我費力地想擁抱他。"),
+  T("resolve",true,"I resolved to hug him.","我下定決心擁抱他。"),
+  T("proceed",true,"I proceeded to hug him.","我接著擁抱他。","proceed to V = 接著做。"),
+  T("neglect",true,"I neglected to call him.","我忘了打電話給他。","neglect to V = 疏忽沒做。"),
+  T("guarantee",true,"I guarantee to help him.","我保證會幫他。"),
+  T("decline",true,"I declined to hug him.","我婉拒擁抱他。"),
+  T("consent",true,"I consented to hug him.","我同意擁抱他。","語氣正式。"),
+  T("dare",true,"I didn't dare to hug him.","我不敢擁抱他。","常用否定；也可 I didn't dare hug him.（to 可省）"),
+  T("long",false,"I long to hug him.","我渴望擁抱他。","long to V = 渴望。"),
+  T("warn",true,"I warned her not to hug him.","我警告她別擁抱他。",P+"；常接 not to V。"),
+  T("force",true,"I forced her to hug him.","我強迫她擁抱他。",P),
+  T("persuade",true,"I persuaded her to hug him.","我說服她擁抱他。",P),
+  T("encourage",true,"I encouraged her to hug him.","我鼓勵她擁抱他。",P),
+  T("enable",true,"The money enabled her to help him.","這筆錢讓她能幫助他。",P+"；主詞常是事情。"),
+  T("require",true,"The rule requires us to wear a mask.","規定要求我們戴口罩。",P+"；主詞常是規定。"),
+  T("urge",true,"I urged her to hug him.","我力勸她擁抱他。",P),
+  T("beg",true,"I begged her to hug him.","我懇求她擁抱他。",P),
+  T("convince",true,"I convinced her to hug him.","我說服她擁抱他。",P),
+  T("instruct",true,"I instructed her to hug him.","我指示她擁抱他。",P),
+  T("permit",true,"I permitted her to hug him.","我准許她擁抱他。",P),
+  T("request",true,"I requested her to hug him.","我請求她擁抱他。",P+"；語氣正式。"),
+  // ing — JH
+  G("enjoy",false,"I enjoy hugging him.","我享受擁抱他。"),
+  G("practice",false,"I practiced hugging him.","我練習擁抱他。"),
+  G("finish",false,"I finished hugging him.","我擁抱完他了。"),
+  G("spend",false,"I spent an hour hugging him.","我花了一小時擁抱他。","spend + 時間 + V-ing。"),
+  G("miss",false,"I miss hugging him.","我懷念擁抱他的感覺。"),
+  G("mind",false,"I don't mind hugging him.","我不介意擁抱他。","也常用 Would you mind + V-ing…? 請問你介意…嗎？"),
+  G("keep",false,"I kept hugging him.","我一直擁抱他。"),
+  G("avoid",false,"I avoided hugging him.","我避免擁抱他。"),
+  G("consider",false,"I considered hugging him.","我考慮擁抱他。"),
+  G("suggest",false,"I suggested hugging him.","我建議擁抱他。"),
+  G("imagine",false,"I imagined hugging him.","我想像擁抱他。"),
+  G("discuss",false,"We discussed moving to Taipei.","我們討論搬到台北。","discuss 討論計畫，用 moving 較自然。"),
+  G("appreciate",false,"I appreciate your helping me.","我很感激你幫我。","常接 your / 人 + V-ing。"),
+  G("quit",false,"I quit hugging him.","我不再擁抱他了。"),
+  G("complete",false,"I completed writing the report.","我完成了報告。","complete 多接工作。"),
+  G("give up",false,"I gave up hugging him.","我放棄擁抱他。"),
+  G("be busy",false,"I was busy hugging him.","我忙著擁抱他。"),
+  G("waste",false,"I wasted an hour hugging him.","我浪費一小時擁抱他。","waste + 時間 + V-ing。"),
+  G("have fun",false,"I had fun hugging him.","我擁抱他很開心。"),
+  G("have trouble",false,"I had trouble hugging him.","我擁抱他有困難。"),
+  G("go",false,"I go swimming.","我去游泳。","go + V-ing：go shopping / swimming / fishing，多是活動，不說 go hugging。"),
+  G("insist on",false,"I insisted on hugging him.","我堅持擁抱他。","介系詞 on 後接 V-ing。"),
+  G("think about",false,"I thought about hugging him.","我想過要擁抱他。","介系詞 about 後接 V-ing。"),
+  // ing — SH
+  G("admit",true,"I admitted hugging him.","我承認擁抱過他。"),
+  G("deny",true,"I denied hugging him.","我否認擁抱過他。"),
+  G("risk",true,"I risked hugging him.","我冒險擁抱他。"),
+  G("delay",true,"I delayed hugging him.","我延後擁抱他。"),
+  G("escape",true,"I escaped being punished.","我逃過被處罰。","escape 多接 being Ved。"),
+  G("mention",true,"I mentioned hugging him.","我提到擁抱過他。"),
+  G("resist",true,"I resisted hugging him.","我忍住不擁抱他。"),
+  G("postpone",true,"I postponed hugging him.","我延後擁抱他。"),
+  G("put off",false,"I put off hugging him.","我拖延擁抱他。"),
+  G("recall",true,"I recalled hugging him.","我回想起擁抱過他。"),
+  G("recommend",true,"I recommended hugging him.","我建議擁抱他。"),
+  G("report",false,"She reported seeing him.","她報告說看到他。","report V-ing = 報告做過某事。"),
+  G("resent",true,"I resented hugging him.","我對擁抱他感到不滿。"),
+  G("tolerate",true,"I can't tolerate waiting.","我無法忍受等待。","常用否定。"),
+  G("fancy",false,"I fancy hugging him.","我想擁抱他。","英式口語，意思是「想要」。"),
+  G("involve",true,"The job involves hugging kids.","這工作包括擁抱小孩。","主詞常是事情。"),
+  G("can't help",false,"I can't help hugging him.","我忍不住擁抱他。"),
+  G("look forward to",false,"I look forward to hugging him.","我期待擁抱他。","to 是介系詞，後接 V-ing。"),
+  G("feel like",false,"I feel like hugging him.","我想擁抱他。"),
+  G("be worth",true,"The movie is worth watching.","這部電影值得看。","主詞常是事物。"),
+  G("be used to",true,"I am used to hugging him.","我習慣擁抱他。","to 是介系詞；別和 used to V（過去常常）搞混。"),
+  G("get used to",true,"I got used to hugging him.","我漸漸習慣擁抱他。","to 是介系詞。"),
+  G("end up",false,"I ended up hugging him.","我最後擁抱了他。"),
+  G("keep on",false,"I kept on hugging him.","我一直擁抱他。"),
+  G("succeed in",false,"I succeeded in hugging him.","我成功擁抱到他。","介系詞 in 後接 V-ing。"),
+  G("dream of",false,"I dream of hugging him.","我夢想擁抱他。","介系詞 of 後接 V-ing。"),
+  G("dislike",true,"I dislike hugging him.","我不喜歡擁抱他。"),
+  // same
+  S("like",false,"I like to hug him.","I like hugging him.","我喜歡擁抱他。"),
+  S("love",false,"I love to hug him.","I love hugging him.","我很愛擁抱他。"),
+  S("hate",false,"I hate to hug him.","I hate hugging him.","我討厭擁抱他。"),
+  S("prefer",true,"I prefer to hug him.","I prefer hugging him.","我比較喜歡擁抱他。"),
+  S("start",false,"I started to hug him.","I started hugging him.","我開始擁抱他。"),
+  S("begin",false,"I began to hug him.","I began hugging him.","我開始擁抱他。"),
+  S("continue",false,"I continued to hug him.","I continued hugging him.","我繼續擁抱他。"),
+  S("bother",false,"I didn't bother to hug him.","I didn't bother hugging him.","我懶得擁抱他。","意思差不多。常用否定。"),
+  S("omit",false,"I omitted to tell him.","I omitted telling him.","我漏了告訴他。","意思差不多。omit = 遺漏，用 tell 較自然。"),
+  S("intend",true,"I intended to hug him.","I intended hugging him.","我打算擁抱他。","意思差不多。to V 較常用。"),
+  S("can't stand",false,"I can't stand to hug him.","I can't stand hugging him.","我受不了擁抱他。"),
+  S("can't bear",false,"I can't bear to hug him.","I can't bear hugging him.","我無法忍受擁抱他。"),
+  S("propose",true,"I proposed to leave early.","I proposed leaving early.","我提議早點離開。","意思差不多。不用 hug him，避免和「求婚」搞混。"),
+  // diff
+  D("remember","I remembered to hug him.","我記得要去擁抱他。","記得要去做，當時還沒做。","I remember hugging him.","我記得曾經擁抱過他。","記得曾經做過。"),
+  D("forget","I forgot to hug him.","我忘了要擁抱他。","忘了要做，所以沒做。","I'll never forget hugging him.","我永遠忘不了擁抱過他。","忘不了曾經發生的事。"),
+  D("stop","I stopped to hug him.","我停下來去擁抱他。","停下來去做另一件事。","I stopped hugging him.","我不再擁抱他。","停止做這件事。"),
+  D("try","I tried to hug him.","我設法要擁抱他。","設法達成，未必成功。","I tried hugging him.","我試著擁抱他看看。","把 hug 當成一個方法來試。"),
+  D("regret","I regret to say that you failed.","我很遺憾地說你沒通過。","regret to V 多接 say / tell / inform，不太會說 regret to hug。","I regretted hugging him.","我後悔擁抱了他。","後悔已經做過的事。"),
+  D("go on","She went on to hug him.","她接著去擁抱他。","接下來做另一件事。","She went on hugging him.","她繼續擁抱他。","同一件事繼續做。"),
+  D("mean","I meant to hug him.","我本來打算擁抱他。","打算。","That would mean hugging him.","那就意味著要擁抱他。","意味著，主詞常常是事情。")
+];
+WORDS.forEach((w, i) => { w.id = "w" + i; });
+const BADGE = { to:'<span class="badge to">to V</span>', ing:'<span class="badge ing">V-ing</span>', same:'<span class="badge same">意思不變</span>', diff:'<span class="badge diff">意思有差</span>' };
+const ROT = [-8,-3,6,2,-6,9,-2,5,-9,4,7,-5,3,-7,1,8,-4,6,-1];
+const scatter = document.getElementById("scatter");
+const sortEx = document.getElementById("sortEx");
+let openId = null;
+let popBtn = null;
+function hidePop() {
+  openId = null; popBtn = null;
+  sortEx.hidden = true; sortEx.innerHTML = "";
+  scatter.querySelectorAll(".pill").forEach(p => p.classList.remove("on"));
+}
+function placePop() {
+  if (!popBtn || sortEx.hidden) return;
+  const r = popBtn.getBoundingClientRect();
+  const pw = sortEx.offsetWidth;
+  const ph = sortEx.offsetHeight;
+  let left = r.right + 12;
+  let top = r.top;
+  if (left + pw > window.innerWidth - 12) left = r.left - pw - 12;
+  if (left < 12) left = 12;
+  if (top + ph > window.innerHeight - 12) top = window.innerHeight - ph - 12;
+  if (top < 12) top = 12;
+  sortEx.style.left = left + "px";
+  sortEx.style.top = top + "px";
+}
+function showPop(w, btn) {
+  openId = w.id;
+  popBtn = btn;
+  scatter.querySelectorAll(".pill").forEach(p => p.classList.remove("on"));
+  btn.classList.add("on");
+  let h = '<div class="sort-pop-head"><div class="ex-en">' + w.v + "　" + BADGE[w.cat] + (w.sh ? ' <span class="badge sh">高中</span>' : "") + '</div><button class="ghost" type="button" id="closeSortEx">關閉</button></div>';
+  w.ex.forEach((e, i) => {
+    if (i) h += '<div class="ex-gap"></div>';
+    h += '<div class="ex-en">' + e.en + ' <button class="say" type="button">🔊</button></div><div class="ex-zh">' + e.zh + "</div>";
+    if (e.note) h += '<div class="ex-zh">' + e.note + "</div>";
+  });
+  if (w.note) h += '<div class="ex-zh" style="margin-top:8px">' + w.note + "</div>";
+  sortEx.innerHTML = h; sortEx.hidden = false;
+  sortEx.querySelectorAll(".say").forEach((b, i) => { b.onclick = ev => { ev.stopPropagation(); speak(w.ex[i].en); }; });
+  document.getElementById("closeSortEx").onclick = ev => { ev.stopPropagation(); hidePop(); };
+  placePop();
+}
+WORDS.filter(w => !w.sh).concat(WORDS.filter(w => w.sh)).forEach((w, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "pill c-" + (w.sh ? "sh" : w.cat); b.textContent = w.v;
+  b.style.setProperty("--r", ROT[i % ROT.length] + "deg");
+  b.onclick = ev => {
+    ev.stopPropagation();
+    if (openId === w.id) hidePop();
+    else showPop(w, b);
+  };
+  scatter.appendChild(b);
+});
+document.addEventListener("click", ev => {
+  if (sortEx.hidden) return;
+  if (sortEx.contains(ev.target)) return;
+  hidePop();
+});
+window.addEventListener("resize", placePop);
+window.addEventListener("scroll", placePop, true);
+
+function toggleFull() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+</script>
+</body>
+</html>
